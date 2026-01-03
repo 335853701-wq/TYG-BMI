@@ -1,0 +1,250 @@
+
+#logist回归分析
+```{r setup, include=FALSE}
+library(MASS)
+library(logistf)
+library(broom)
+library(gtsummary)
+library(gt)
+
+dg20250423$TyGBMI_per10 <- dg20250423$TyGBMI / 10
+
+#连续变量
+model1_lx <- glm(Depression ~ TyGBMI_per10,
+               data = dg20250423,
+               family = binomial(link = "logit"))
+
+model2_lx <- glm(Depression~ TyGBMI_per10 + 年龄_年 + gender + Smoke + drink +Marital_status  + Education,
+               data = dg20250423,
+               family = binomial(link = "logit"))
+
+model3_lx <- glm(Depression~ TyGBMI_per10 + 年龄_年 + gender + Smoke + drink + Marital_status  + Education + 
+                 sbp + dbp + 总胆固醇_TCH + 高密度脂蛋白_HDL_C + eGFR,
+               data = dg20250423,
+               family = binomial(link = "logit"))
+
+
+#分类变量-四分位数分析
+model1 <- glm(Depression ~ TyGBMI_fz,
+               data = dg20250423,
+               family = binomial(link = "logit"))  # 默认就是 TRUE
+
+model2 <- glm(Depression~ TyGBMI_fz + 年龄_年 + gender + Smoke + drink + Marital_status  + Education,
+               data = dg20250423,
+               family = binomial(link = "logit"))
+
+model3 <- glm(Depression~ TyGBMI_fz + 年龄_年 + gender + Smoke + drink + Marital_status  + Education + 
+                 sbp + dbp + 总胆固醇_TCH + 高密度脂蛋白_HDL_C + eGFR,
+               data = dg20250423,
+               family = binomial(link = "logit"))
+
+
+
+#########森林图（亚组分析）
+
+###年龄，60为0
+年龄<-cut(dg20250423$年龄_年,breaks=c(0,60,200),include.lowest=T,labels =c(0,1))
+df<-cbind(dg20250423,年龄)
+n.年龄<-as.numeric(as.character(df$年龄))
+df1<-cbind(df,n.年龄)
+
+
+###年龄≤60
+年龄1<-subset(df1,df1$n.年龄<1)
+S1<- glm(Depression~ TyGBMI + gender + Smoke + drink + Marital_status  + Education + 
+                 sbp + dbp + 总胆固醇_TCH + 高密度脂蛋白_HDL_C + eGFR,
+               data = 年龄1,
+               family = binomial(link = "logit"))
+
+###年龄大于60
+年龄2<-subset(df1,df1$n.年龄>=1)
+S2<- glm(Depression~ TyGBMI  + gender + Smoke + drink + Marital_status  + Education + 
+                 sbp + dbp + 总胆固醇_TCH + 高密度脂蛋白_HDL_C + eGFR,
+               data = 年龄2,
+               family = binomial(link = "logit"))
+
+##性别
+dg20250423$gender<-as.numeric(dg20250423$gender)
+性别0<-cut(dg20250423$gender,breaks=c(0,1.99,200),include.lowest=T,labels =c(0,1))
+df<-cbind(dg20250423,性别0)
+n.性别0<-as.numeric(as.character(df$性别0))
+df1<-cbind(df,n.性别0)
+
+
+###性别=男
+性别1<-subset(df1,df1$n.性别0<1)
+S3<- glm(Depression~ TyGBMI + 年龄_年  + Smoke + drink + Marital_status  + Education + 
+                 sbp + dbp + 总胆固醇_TCH + 高密度脂蛋白_HDL_C + eGFR,
+               data = 性别1,
+               family = binomial(link = "logit"))
+
+###性别=女
+性别2<-subset(df1,df1$n.性别0>=1)
+S4<- glm(Depression~ TyGBMI + 年龄_年  + Smoke + drink + Marital_status  + Education + 
+                 sbp + dbp + 总胆固醇_TCH + 高密度脂蛋白_HDL_C + eGFR,
+               data = 性别2,
+               family = binomial(link = "logit"))
+
+
+##教育
+dg20250423$Education<-as.numeric(dg20250423$Education)
+教育0<-cut(dg20250423$Education,breaks=c(0,1.99,200),include.lowest=T,labels =c(0,1))
+df<-cbind(dg20250423,教育0)
+n.教育0<-as.numeric(as.character(df$教育0))
+df1<-cbind(df,n.教育0)
+
+
+###教育=小于高中
+教育1<-subset(df1,df1$n.教育0<1)
+S5<- glm(Depression~ TyGBMI + 年龄_年  +gender+ Smoke + drink + Marital_status   + 
+                 sbp + dbp + 总胆固醇_TCH + 高密度脂蛋白_HDL_C + eGFR,
+               data = 教育1,
+               family = binomial(link = "logit"))
+
+###教育=大于高中
+教育2<-subset(df1,df1$n.教育0>=1)
+S6<- glm(Depression~ TyGBMI + 年龄_年  + gender+Smoke + drink + Marital_status   + 
+                 sbp + dbp + 总胆固醇_TCH + 高密度脂蛋白_HDL_C + eGFR,
+               data = 教育2,
+               family = binomial(link = "logit"))
+
+##吸烟
+dg20250423$Smoke<-as.numeric(dg20250423$Smoke)
+Smoke0<-cut(dg20250423$Smoke,breaks=c(0,1.99,2.99,200),include.lowest=T,labels =c(0,1,2))
+df<-cbind(dg20250423,Smoke0)
+n.Smoke0<-as.numeric(as.character(df$Smoke0))
+df1<-cbind(df,n.Smoke0)
+
+
+###吸烟=从不
+吸烟1<-subset(df1,df1$n.Smoke0<1)
+S7<- glm(Depression~ TyGBMI + 年龄_年  +gender+ drink + Education + Marital_status+ 
+                 sbp + dbp + 总胆固醇_TCH + 高密度脂蛋白_HDL_C + eGFR,
+               data = 吸烟1,
+               family = binomial(link = "logit"))
+
+###吸烟=之前抽
+吸烟2<-subset(df1,df1$n.Smoke0==1)
+S8<- glm(Depression~ TyGBMI + 年龄_年  + gender+ drink + Education + Marital_status + 
+                 sbp + dbp + 总胆固醇_TCH + 高密度脂蛋白_HDL_C + eGFR,
+               data = 吸烟2,
+               family = binomial(link = "logit"))
+
+
+###吸烟=现在抽
+吸烟3<-subset(df1,df1$n.Smoke0>1)
+S9<- glm(Depression~ TyGBMI + 年龄_年  + gender+ drink + Education + Marital_status+ 
+                 sbp + dbp + 总胆固醇_TCH + 高密度脂蛋白_HDL_C + eGFR,
+               data = 吸烟3,
+               family = binomial(link = "logit"))
+
+##喝酒
+dg20250423$drink<-as.numeric(dg20250423$drink)
+drink0<-cut(dg20250423$drink,breaks=c(0,1.99,2.99,3.99,200),include.lowest=T,labels =c(0,1,2,3))
+df<-cbind(dg20250423,drink0)
+n.drink0<-as.numeric(as.character(df$drink0))
+df1<-cbind(df,n.drink0)
+
+
+###喝酒=不饮酒
+饮酒1<-subset(df1,df1$n.drink0<1)
+S10<- glm(Depression~ TyGBMI + 年龄_年  +gender+ Smoke+ Education + Marital_status+ 
+                 sbp + dbp + 总胆固醇_TCH + 高密度脂蛋白_HDL_C + eGFR,
+               data = 饮酒1,
+               family = binomial(link = "logit"))
+
+###喝酒=偶尔饮酒
+饮酒2<-subset(df1,df1$n.drink0==1)
+S11<- glm(Depression~ TyGBMI + 年龄_年  + gender+Smoke+ Education + Marital_status + 
+                 sbp + dbp + 总胆固醇_TCH + 高密度脂蛋白_HDL_C + eGFR,
+               data = 饮酒2,
+               family = binomial(link = "logit"))
+
+
+###喝酒=轻中度饮酒
+饮酒3<-subset(df1,df1$n.drink0==2)
+S12<- glm(Depression~ TyGBMI + 年龄_年  + gender+Smoke+Education + Marital_status+ 
+                 sbp + dbp + 总胆固醇_TCH + 高密度脂蛋白_HDL_C + eGFR,
+               data = 饮酒3,
+               family = binomial(link = "logit"))
+
+###喝酒=重度饮酒
+饮酒4<-subset(df1,df1$n.drink0==3)
+S13<- glm(Depression~ TyGBMI + 年龄_年  + gender+Smoke+Education + Marital_status+ 
+                 sbp + dbp + 总胆固醇_TCH + 高密度脂蛋白_HDL_C + eGFR,
+               data = 饮酒4,
+               family = binomial(link = "logit"))
+
+##CKM正常，早期，晚期
+dg20250423$ckm_stage<-as.numeric(dg20250423$ckm_stage)
+ckm_stage0<-cut(dg20250423$ckm_stage,breaks=c(0,1.99,3.99,200),include.lowest=T,labels =c(0,1,2))
+df<-cbind(dg20250423,ckm_stage0)
+n.ckm_stage0<-as.numeric(as.character(df$ckm_stage0))
+df1<-cbind(df,n.ckm_stage0)
+
+
+###CKM正常（stage0）
+CKM正常<-subset(df1,df1$n.ckm_stage0<1)
+S14<- glm(Depression~ TyGBMI + 年龄_年  +gender+ Education +Smoke+ drink + Marital_status+ 
+                 sbp + dbp + 总胆固醇_TCH + 高密度脂蛋白_HDL_C + eGFR,
+               data = CKM正常,
+               family = binomial(link = "logit"))
+
+###CKM早期（stage1和2）
+CKM早期<-subset(df1,df1$n.ckm_stage0==1)
+S15<- glm(Depression~ TyGBMI + 年龄_年  + gender+Education +Smoke+ drink + Marital_status + 
+                 sbp + dbp + 总胆固醇_TCH + 高密度脂蛋白_HDL_C + eGFR,
+               data = CKM早期,
+               family = binomial(link = "logit"))
+
+
+###CKM晚期（stage3）
+CKM晚期<-subset(df1,df1$n.ckm_stage0>1)
+S16<- glm(Depression~ TyGBMI + 年龄_年  + gender+Education +Smoke+ drink + Marital_status+ 
+                 sbp + dbp + 总胆固醇_TCH + 高密度脂蛋白_HDL_C + eGFR,
+               data = CKM晚期,
+               family = binomial(link = "logit"))
+
+
+
+
+
+#######非线性关联：TYGBMI-与抑郁
+fit <- lrm(Depression ~ rcs(TyGBMI, 3) + 年龄_年 + gender + Smoke + Marital_status  + Education + 
+            sbp + dbp + 总胆固醇_TCH + 高密度脂蛋白_HDL_C + eGFR, 
+          data = data_rcs, x = TRUE, y = TRUE)
+
+
+m1 <-rms::Predict(fit,TyGBMI,fun=exp,type="predictions",ref.zero=T,conf.int = 0.95,digits=2)
+ggplot(m1)
+annova_model <- anova(fit)
+print(annova_model)
+
+plot_data <- as.data.frame(m1)
+
+ggplot(plot_data, aes(x = TyGBMI, y = yhat)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), 
+              alpha = 0.3, fill = "#1E88E5") +
+  geom_line(color = "#1E88E5", size = 1.2) +
+  geom_hline(yintercept = 1, linetype = 2, color = "red", size = 0.8) +
+  labs(x = "TyG-BMI值", 
+       y = "OR (95%CI)",
+       title = "TyG-BMI and depression") +
+  theme_classic(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 13),
+    axis.title = element_text(face = "bold"),
+    axis.text = element_text(color = "black"),
+    panel.grid.major.y = element_line(color = "grey90")
+  ) +
+  scale_y_continuous(trans = "log10",
+                     breaks = c(0.5, 1, 2, 5, 10),
+                     limits = c(NA, max(plot_data$upper)))
+
+ggsave("TyGBMI_OR_plot.pdf",
+       plot = last_plot(),
+       device = "pdf",
+       width = 8,
+       height = 6,
+       units = "in")
+
